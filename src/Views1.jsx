@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { todayStr, isoOf, mondayOf, weekDates, dowOf, fmtShort, fmtMoney, DAYS, DAYS_FULL, uid } from "./core.js";
+import { VisitEditSheet, MessageSheet } from "./Views4.jsx";
 
 const C = { ink: "#0f1f13", forest: "#1B3A1F", moss: "#3f7a33", field: "#79bd56",
   paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e" };
 
 // ─── TODAY ───────────────────────────────────────────────────────────────
 export function TodayView({ data, upd, showToast }) {
+  const [editVisit, setEditVisit] = useState(null);
+  const [msgTarget, setMsgTarget] = useState(null); // {client, visit}
   const todayDow = new Date().getDay();
   const activeClients = data.clients.filter(c => c.status !== "inactive");
   // A client with no fixed schedule day is "floating" — shows every day so
@@ -75,9 +78,13 @@ export function TodayView({ data, upd, showToast }) {
               </div>
             </div>
             {doneToday
-              ? <span style={{ fontSize: 11, fontWeight: 800, color: C.moss }}>DONE</span>
+              ? <button onClick={() => { const lv = data.visits.filter(x => x.clientId === c.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]; setMsgTarget({ client: c, visit: lv || null }); }}
+                  style={{ background: C.moss, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px",
+                    fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  Text receipt
+                </button>
               : <button onClick={() => markDone(c.id, c.rate)} style={{ background: C.forest, color: "#fff",
-                  border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                   Mark Done
                 </button>}
           </div>
@@ -95,19 +102,31 @@ export function TodayView({ data, upd, showToast }) {
           </div>
           {unpaidVisits.map(v => (
             <div key={v.id} style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12,
-              padding: 12, marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{nameOf(v.clientId)}</div>
-                <div style={{ fontSize: 12, color: C.stone }}>Serviced {v.date} · {fmtMoney(v.amount)}</div>
+              padding: 12, marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setEditVisit(v)}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{nameOf(v.clientId)}</div>
+                  <div style={{ fontSize: 12, color: C.stone }}>Serviced {v.date} · {fmtMoney(v.amount)} · tap to edit</div>
+                </div>
+                <button onClick={() => markPaid(v.id)} style={{ background: "#3f7a33", color: "#fff",
+                  border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  Collect
+                </button>
               </div>
-              <button onClick={() => markPaid(v.id)} style={{ background: "#3f7a33", color: "#fff",
-                border: "none", borderRadius: 8, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                Collect
+              <button onClick={() => { const c = data.clients.find(x => x.id === v.clientId); if (c) setMsgTarget({ client: c, visit: v }); }}
+                style={{ width: "100%", marginTop: 8, background: "#fff", color: C.forest, border: `1px solid ${C.line}`,
+                  borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                Send payment reminder
               </button>
             </div>
           ))}
         </div>
       )}
+
+      {editVisit && <VisitEditSheet visit={editVisit} clientName={nameOf(editVisit.clientId)}
+        upd={upd} showToast={showToast} onClose={() => setEditVisit(null)} />}
+      {msgTarget && <MessageSheet client={msgTarget.client} visit={msgTarget.visit}
+        business={data.business} showToast={showToast} onClose={() => setMsgTarget(null)} />}
     </div>
   );
 }
