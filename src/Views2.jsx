@@ -117,6 +117,17 @@ export function QuoteView({ data, upd, showToast }) {
   const est = priceQuote(lotSqFt, obstacles, data.pricing);
   const margin = marginCheck(est, data.business.targetHourlyNet, 0.30, roundTripMiles);
 
+  // CALIBRATION: what the timer actually recorded, versus what this engine
+  // assumes. Estimates drift from reality; this closes the loop with real data
+  // instead of leaving the operator to guess whether their rate is right.
+  const timed = data.visits.filter(v => Number(v.durationMin) > 0 && Number(v.amount) > 0);
+  const realHourly = timed.length
+    ? timed.reduce((s, v) => s + Number(v.amount) / (Number(v.durationMin) / 60), 0) / timed.length
+    : null;
+  const avgMin = timed.length
+    ? Math.round(timed.reduce((s, v) => s + Number(v.durationMin), 0) / timed.length)
+    : null;
+
   const acceptQuote = () => {
     if (!name.trim()) { showToast("Client name required", "err"); return; }
     // Guard against double-tap: on mobile a fast second tap fires before the
@@ -187,6 +198,26 @@ export function QuoteView({ data, upd, showToast }) {
       {!margin.meetsTarget && (
         <div style={{ background: C.alertBg, border: `1px solid ${C.alert}`, borderRadius: 10, padding: 11, marginBottom: 12, fontSize: 13 }}>
           <b style={{ color: C.alert }}>Below your ${data.business.targetHourlyNet}/hr target</b> by {fmtMoney(margin.shortfall)}/hr — drive distance or obstacle time is eating the margin. Consider raising the rate or grouping this stop with a nearby job.
+        </div>
+      )}
+
+      {timed.length > 0 && (
+        <div style={{ background: C.okBg, border: `1px solid ${C.moss}`, borderRadius: 12, padding: 13, marginBottom: 12 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase",
+            color: C.moss, marginBottom: 5 }}>
+            Reality check — from {timed.length} timed job{timed.length > 1 ? "s" : ""}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
+            <span>Actual average on site</span><b>{avgMin} min</b>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginTop: 3 }}>
+            <span>Actual earned per hour</span><b>{fmtMoney(realHourly)}/hr</b>
+          </div>
+          <div style={{ fontSize: 11.5, color: C.stone, marginTop: 7, lineHeight: 1.45 }}>
+            {realHourly >= data.pricing.billableRate
+              ? `You're clearing more than your ${fmtMoney(data.pricing.billableRate)}/hr target on timed work — the engine is pricing conservatively.`
+              : `You're earning less than your ${fmtMoney(data.pricing.billableRate)}/hr target. Either jobs take longer than estimated, or the rate needs to come up.`}
+          </div>
         </div>
       )}
 
