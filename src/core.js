@@ -65,6 +65,9 @@ const blankState = () => ({
     mileageRate: 0.70,       // 2025 IRS standard mileage rate; update yearly
     taxSetAsidePct: 25,      // % of collected revenue held for quarterly est. tax
     targetHourlyNet: 45,     // what you actually want to clear per billable hour
+    // Payment handles get appended to money-related texts so a client can pay
+    // from the message instead of "I'll get you next time".
+    venmo: "", cashapp: "", zelle: "",
   },
   pricing: {
     mowSpeedMph: 3.5,        // realistic walk/ride speed while cutting
