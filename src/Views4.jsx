@@ -187,6 +187,17 @@ export function VisitEditSheet({ visit, clientName, upd, showToast, onClose }) {
 // ─── MESSAGE TEMPLATES + SMS COMPOSER ────────────────────────────────────
 // Templates are functions of the real record so the message is already
 // accurate — the operator edits tone, never re-types facts.
+
+// Payment handles, rendered only when the operator has filled them in — an
+// empty "Pay me at:" header with nothing under it looks worse than no header.
+const payBlock = biz => {
+  const lines = [];
+  if (biz.venmo)   lines.push(`Venmo: ${biz.venmo}`);
+  if (biz.cashapp) lines.push(`Cash App: ${biz.cashapp}`);
+  if (biz.zelle)   lines.push(`Zelle: ${biz.zelle}`);
+  return lines.length ? `\n\nEasiest ways to pay:\n${lines.join("\n")}` : "";
+};
+
 export const TEMPLATES = [
   { id: "receipt", label: "Receipt",
     build: (c, v, biz) =>
@@ -225,8 +236,19 @@ ${biz.phone || ""}`.trim() },
 
 ${(v.servicesDone || ["Mow","Trim","Blow"]).join(", ")} — ${fmtMoney(v.amount)}
 
-Whenever you get a chance, no rush. Thanks!
+Whenever you get a chance, no rush. Thanks!${payBlock(biz)}
 
+${biz.name}
+${biz.phone || ""}`.trim() },
+
+  { id: "invoice", label: "Invoice / amount due",
+    build: (c, v, biz) =>
+`${c.name.split(" ")[0]}, here's what's due for ${fmtDate(v.date)}:
+
+${(v.servicesDone || ["Mow","Trim","Blow"]).join(", ")}
+Amount due: ${fmtMoney(v.amount)}${payBlock(biz)}
+
+Thanks!
 ${biz.name}
 ${biz.phone || ""}`.trim() },
 
