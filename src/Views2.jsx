@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { fmtMoney, uid, priceQuote, marginCheck, DAYS } from "./core.js";
+import { ClientEditSheet, MessageSheet } from "./Views4.jsx";
 
 const C = { ink: "#0f1f13", forest: "#1B3A1F", moss: "#3f7a33", field: "#79bd56",
   paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e",
@@ -11,6 +12,8 @@ const inputStyle = { width: "100%", padding: "11px 12px", fontSize: 15, border: 
 // ─── CLIENTS ────────────────────────────────────────────────────────────
 export function ClientsView({ data, upd, showToast }) {
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(null);   // client being edited
+  const [messaging, setMessaging] = useState(null); // client being texted
   const [form, setForm] = useState({ name: "", address: "", phone: "", rate: "", zone: "", scheduleDays: [] });
 
   const addClient = () => {
@@ -69,17 +72,35 @@ export function ClientsView({ data, upd, showToast }) {
         const totalEarned = data.visits.filter(v => v.clientId === c.id && v.paid).reduce((s, v) => s + Number(v.amount || 0), 0);
         return (
           <div key={c.id} style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <div style={{ fontWeight: 700 }}>{c.name}</div>
-              <div style={{ fontWeight: 700, color: C.forest }}>{fmtMoney(c.rate)}/visit</div>
+            <div onClick={() => setEditing(c)} style={{ cursor: "pointer" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 700 }}>{c.name}</div>
+                <div style={{ fontWeight: 700, color: C.forest }}>{fmtMoney(c.rate)}/visit</div>
+              </div>
+              <div style={{ fontSize: 12.5, color: C.stone, marginTop: 2 }}>
+                {c.zone && <span style={{ color: C.moss, fontWeight: 700 }}>{c.zone} · </span>}
+                {c.address} · Lifetime: {fmtMoney(totalEarned)}
+              </div>
             </div>
-            <div style={{ fontSize: 12.5, color: C.stone, marginTop: 2 }}>
-              {c.zone && <span style={{ color: C.moss, fontWeight: 700 }}>{c.zone} · </span>}
-              {c.address} · Lifetime: {fmtMoney(totalEarned)}
+            <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
+              <button onClick={() => setEditing(c)} style={{ flex: 1, background: "#fff", color: C.forest,
+                border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12.5,
+                cursor: "pointer", fontFamily: "inherit" }}>Edit</button>
+              <button onClick={() => setMessaging(c)} style={{ flex: 1, background: C.moss, color: "#fff",
+                border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12.5,
+                cursor: "pointer", fontFamily: "inherit" }}>Text</button>
+              {c.phone && <a href={`tel:${String(c.phone).replace(/\D/g,"")}`} style={{ flex: 1, textAlign: "center",
+                background: "#fff", color: C.forest, border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 0",
+                fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>Call</a>}
             </div>
           </div>
         );
       })}
+
+      {editing && <ClientEditSheet client={editing} upd={upd} showToast={showToast} onClose={() => setEditing(null)} />}
+      {messaging && <MessageSheet client={messaging}
+        visit={data.visits.filter(v => v.clientId === messaging.id).sort((a,b) => (b.date||"").localeCompare(a.date||""))[0] || null}
+        business={data.business} showToast={showToast} onClose={() => setMessaging(null)} />}
     </div>
   );
 }
