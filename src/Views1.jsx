@@ -1,14 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { todayStr, isoOf, mondayOf, weekDates, dowOf, fmtShort, fmtMoney, DAYS, DAYS_FULL, uid } from "./core.js";
 import { VisitEditSheet, MessageSheet } from "./Views4.jsx";
 
 const C = { ink: "#0f1f13", forest: "#1B3A1F", moss: "#3f7a33", field: "#79bd56",
-  paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e" };
+  paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e", alert: "#b3402e" };
 
 // ─── TODAY ───────────────────────────────────────────────────────────────
 export function TodayView({ data, upd, showToast }) {
   const [editVisit, setEditVisit] = useState(null);
   const [msgTarget, setMsgTarget] = useState(null); // {client, visit}
+  // Job timer: {clientId, startedAt}. Kept in component state deliberately —
+  // a half-finished timer is not business data and shouldn't outlive the app.
+  const [timer, setTimer] = useState(null);
+  const [tick, setTick] = useState(0);
+  // Only run an interval while something is actually being timed. An
+  // unconditional 1s interval re-renders the whole screen forever and wipes
+  // any local state the child sheets are holding.
+  useEffect(() => {
+    if (!timer) return;
+    const h = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(h);
+  }, [timer]);
+  const elapsedMin = timer ? Math.max(0, Math.round((Date.now() - timer.startedAt) / 60000)) : 0;
+  const elapsedLabel = () => {
+    if (!timer) return "";
+    const s = Math.max(0, Math.floor((Date.now() - timer.startedAt) / 1000));
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  };
   const todayDow = new Date().getDay();
   const activeClients = data.clients.filter(c => c.status !== "inactive");
   // A client with no fixed schedule day is "floating" — shows every day so
@@ -16,16 +34,22 @@ export function TodayView({ data, upd, showToast }) {
   const todayClients = activeClients.filter(c =>
     (c.scheduleDays || []).length === 0 || (c.scheduleDays || []).includes(todayDow));
 
-  const markDone = (clientId, amount) => {
+  const markDone = (clientId, amount, durationMin = null) => {
     upd(d => {
       // Double-tap guard: a second tap before re-render would log the same
       // job twice and inflate both outstanding and income.
       if (d.visits.some(v => v.clientId === clientId && v.date === todayStr())) return d;
       return { ...d,
         visits: [{ id: uid(), clientId, date: todayStr(), amount, paid: false, paidDate: null,
-          durationMin: null, servicesDone: ["Mow", "Trim", "Blow"] }, ...d.visits] };
+          durationMin, servicesDone: ["Mow", "Trim", "Blow"] }, ...d.visits] };
     });
-    showToast("Logged — collect payment to count it as income");
+    showToast(durationMin ? `Logged — ${durationMin} min on site` : "Logged — collect payment to count it as income");
+  };
+
+  const stopTimerAndLog = c => {
+    const mins = Math.max(1, elapsedMin);
+    markDone(c.id, c.rate, mins);
+    setTimer(null);
   };
 
   // CASH-BASIS: marking paid stamps TODAY as the paidDate. That date — not the
@@ -77,6 +101,17 @@ export function TodayView({ data, upd, showToast }) {
                 {c.address || "No address"} · {fmtMoney(c.rate)}
               </div>
             </div>
+            {!doneToday && (timer?.clientId === c.id
+              ? <button onClick={() => stopTimerAndLog(c)} style={{ background: C.alert || "#b3402e", color: "#fff",
+                  border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, fontSize: 13,
+                  cursor: "pointer", fontFamily: "inherit", marginRight: 6 }}>
+                  Stop {elapsedLabel()}
+                </button>
+              : !timer && <button onClick={() => { setTimer({ clientId: c.id, startedAt: Date.now() }); setTick(0); }}
+                  style={{ background: "#fff", color: C.forest, border: `1px solid ${C.line}`, borderRadius: 8,
+                    padding: "9px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", marginRight: 6 }}>
+                  Start
+                </button>)}
             {doneToday
               ? <button onClick={() => { const lv = data.visits.filter(x => x.clientId === c.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]; setMsgTarget({ client: c, visit: lv || null }); }}
                   style={{ background: C.moss, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px",
@@ -132,6 +167,16 @@ export function TodayView({ data, upd, showToast }) {
 }
 
 // ─── WEEK PLANNER (differentiator: auto-fill + zone routing) ─────────────
+// Sort by explicit order when set, falling back to zone grouping so a freshly
+// auto-filled day still comes out as a sensible route before any manual moves.
+const byOrder = data => (a, b) => {
+  const ao = Number.isFinite(a.order) ? a.order : 999;
+  const bo = Number.isFinite(b.order) ? b.order : 999;
+  if (ao !== bo) return ao - bo;
+  const cz = id => (data.clients.find(c => c.id === id)?.zone || "~");
+  return cz(a.clientId).localeCompare(cz(b.clientId));
+};
+
 export function WeekView({ data, upd, showToast }) {
   const [weekOffset, setWeekOffset] = useState(1);
   const mon = mondayOf(weekOffset);
@@ -174,6 +219,37 @@ export function WeekView({ data, upd, showToast }) {
 
   const toggleDone = id => upd(d => ({ ...d, plannedStops: d.plannedStops.map(s => s.id === id ? { ...s, done: !s.done } : s) }));
 
+  // Reorder within a day. Stops carry an explicit `order`; zone is only the
+  // tiebreaker, so once the operator sets an order it sticks and isn't
+  // re-sorted out from under them on the next render.
+  const moveStop = (date, stopId, dir) => {
+    upd(d => {
+      const day = (d.plannedStops || []).filter(s => s.date === date).sort(byOrder(d));
+      const i = day.findIndex(s => s.id === stopId);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= day.length) return d;
+      [day[i], day[j]] = [day[j], day[i]];
+      const orderMap = new Map(day.map((s, idx) => [s.id, idx]));
+      return { ...d, plannedStops: d.plannedStops.map(s =>
+        orderMap.has(s.id) ? { ...s, order: orderMap.get(s.id) } : s) };
+    });
+  };
+
+  // Google Maps multi-stop route: first address is the origin, last is the
+  // destination, everything between becomes a waypoint in the given order.
+  const mapsUrlFor = date => {
+    const addrs = weekStops.filter(s => s.date === date && !s.done)
+      .sort(byOrder(data))
+      .map(s => (cById(s.clientId)?.address || "").trim())
+      .filter(Boolean);
+    if (!addrs.length) return null;
+    const enc = a => encodeURIComponent(a);
+    if (addrs.length === 1) return `https://www.google.com/maps/dir/?api=1&destination=${enc(addrs[0])}`;
+    const dest = addrs[addrs.length - 1];
+    const way = addrs.slice(0, -1);
+    return `https://www.google.com/maps/dir/?api=1&destination=${enc(dest)}&waypoints=${way.map(enc).join("%7C")}`;
+  };
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -192,14 +268,22 @@ export function WeekView({ data, upd, showToast }) {
       </button>
 
       {dates.map(date => {
-        const dayStops = weekStops.filter(s => s.date === date)
-          .sort((a, b) => { const za = cById(a.clientId)?.zone || "~", zb = cById(b.clientId)?.zone || "~"; return za.localeCompare(zb); });
+        const dayStops = weekStops.filter(s => s.date === date).sort(byOrder(data));
+        const mapsUrl = mapsUrlFor(date);
         const isToday = date === todayStr();
         return (
           <div key={date} style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase",
-              color: isToday ? C.forest : C.stone, padding: "4px 2px" }}>
-              {DAYS_FULL[dowOf(date)]} · {fmtShort(date)}{isToday && " — TODAY"}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 2px" }}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase",
+                color: isToday ? C.forest : C.stone }}>
+                {DAYS_FULL[dowOf(date)]} · {fmtShort(date)}{isToday && " — TODAY"}
+              </span>
+              <div style={{ flex: 1 }} />
+              {mapsUrl && <a href={mapsUrl} target="_blank" rel="noreferrer"
+                style={{ fontSize: 11.5, fontWeight: 800, color: C.moss, textDecoration: "none",
+                  border: `1px solid ${C.line}`, borderRadius: 14, padding: "4px 10px", background: "#fff" }}>
+                Route ↗
+              </a>}
             </div>
             {dayStops.length === 0
               ? <div style={{ fontSize: 12, color: "#999", fontStyle: "italic", paddingLeft: 4 }}>—</div>
@@ -216,6 +300,14 @@ export function WeekView({ data, upd, showToast }) {
                         <div style={{ fontSize: 12, color: C.stone }}>
                           {c.zone && <span style={{ color: C.moss, fontWeight: 700 }}>{c.zone} · </span>}{c.address}
                         </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <button aria-label="Move up" onClick={() => moveStop(date, s.id, -1)}
+                          style={{ border: `1px solid ${C.line}`, background: "#fff", borderRadius: 6,
+                            width: 30, height: 22, cursor: "pointer", fontSize: 11, lineHeight: 1, padding: 0, fontFamily: "inherit" }}>▲</button>
+                        <button aria-label="Move down" onClick={() => moveStop(date, s.id, 1)}
+                          style={{ border: `1px solid ${C.line}`, background: "#fff", borderRadius: 6,
+                            width: 30, height: 22, cursor: "pointer", fontSize: 11, lineHeight: 1, padding: 0, fontFamily: "inherit" }}>▼</button>
                       </div>
                     </div>
                   );
