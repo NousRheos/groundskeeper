@@ -195,6 +195,20 @@ export function SettingsView({ data, upd, showToast }) {
         {row("Target net $/hour", data.business.targetHourlyNet, v => setBiz("targetHourlyNet", v), "$/hr")}
         {row("Tax set-aside", data.business.taxSetAsidePct, v => setBiz("taxSetAsidePct", v), "%")}
         {row("IRS mileage rate", data.business.mileageRate, v => setBiz("mileageRate", v), "$/mi")}
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: C.stone, textTransform: "uppercase", margin: "12px 0 6px" }}>
+          How clients pay you
+        </div>
+        <div style={{ fontSize: 11.5, color: C.stone, marginBottom: 8 }}>
+          These get added automatically to reminder and invoice texts, so a client can pay from the message.
+        </div>
+        <input style={inputStyle} placeholder="Venmo handle (e.g. @Ethan-Trouth)" value={data.business.venmo || ""}
+          onChange={e => setBiz("venmo", e.target.value)} />
+        <div style={{ height: 7 }} />
+        <input style={inputStyle} placeholder="Cash App ($cashtag)" value={data.business.cashapp || ""}
+          onChange={e => setBiz("cashapp", e.target.value)} />
+        <div style={{ height: 7 }} />
+        <input style={inputStyle} placeholder="Zelle (phone or email)" value={data.business.zelle || ""}
+          onChange={e => setBiz("zelle", e.target.value)} />
       </div>
 
       <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 14 }}>
