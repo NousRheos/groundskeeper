@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtMoney, todayStr, uid } from "./core.js";
+import { fmtMoney, todayStr, uid, migrate } from "./core.js";
 
 const C = { ink: "#0f1f13", forest: "#1B3A1F", moss: "#3f7a33", field: "#79bd56",
   paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e",
@@ -111,9 +111,61 @@ export function TaxView({ data, upd, showToast }) {
 // Without this the app is a fixed demo; with it, a contractor (or a judge)
 // can put their own real economics in and watch every downstream figure move.
 export function SettingsView({ data, upd, showToast }) {
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
   const setBiz = (k, v) => upd(d => ({ ...d, business: { ...d.business, [k]: v } }));
   const setPricing = (k, v) => upd(d => ({ ...d, pricing: { ...d.pricing, [k]: v } }));
   const num = v => (v === "" ? "" : Number(v));
+
+  // Export via clipboard rather than file download: a blob download is
+  // silently blocked in some embedded/mobile webviews and reports success
+  // anyway, which loses the backup without telling the user.
+  const copyBackup = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      showToast("Backup copied — paste it somewhere safe");
+    } catch {
+      setPasteOpen(true);
+      showToast("Clipboard blocked — copy from the box below", "err");
+    }
+  };
+
+  const loadPasted = mode => {
+    let incoming;
+    try {
+      // Strip smart quotes, BOM, and zero-width characters that phone
+      // keyboards and messaging apps inject when text is copied around.
+      const clean = pasteText
+        .replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\uFEFF\u200B-\u200D]/g, "").trim();
+      incoming = JSON.parse(clean);
+    } catch {
+      showToast("That isn't valid backup text", "err"); return;
+    }
+    if (!incoming || typeof incoming !== "object" || !Array.isArray(incoming.clients)) {
+      showToast("Backup is missing a clients list", "err"); return;
+    }
+    upd(d => {
+      if (mode === "replace") return migrate(incoming);
+      // Merge by id so re-importing the same backup can't duplicate rows.
+      const mergeById = (a, b) => {
+        const seen = new Set(a.map(x => x.id));
+        return [...a, ...b.filter(x => x && x.id && !seen.has(x.id))];
+      };
+      const inc = migrate(incoming);
+      return { ...d,
+        clients: mergeById(d.clients, inc.clients),
+        visits: mergeById(d.visits, inc.visits),
+        expenses: mergeById(d.expenses, inc.expenses),
+        mileage: mergeById(d.mileage, inc.mileage),
+        quotes: mergeById(d.quotes, inc.quotes),
+        equipment: mergeById(d.equipment, inc.equipment),
+        plannedStops: mergeById(d.plannedStops, inc.plannedStops),
+      };
+    });
+    setPasteText(""); setPasteOpen(false);
+    showToast(mode === "replace" ? "Data replaced" : "Data merged in");
+  };
 
   const row = (label, value, onChange, suffix) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0",
@@ -157,6 +209,49 @@ export function SettingsView({ data, upd, showToast }) {
           Efficiency is the fraction of time actually spent cutting — turns, obstacles, and repositioning
           are the rest. 0.75 is realistic for typical residential work.
         </div>
+      </div>
+
+      <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginTop: 12 }}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Backup &amp; restore</div>
+        <div style={{ fontSize: 12, color: C.stone, marginBottom: 10 }}>
+          Data lives in this browser only. Copy a backup somewhere safe, or paste one in to move
+          between devices.
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={copyBackup} style={{ flex: 1, background: C.forest, color: "#fff", border: "none",
+            borderRadius: 8, padding: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            Copy backup
+          </button>
+          <button onClick={() => setPasteOpen(o => !o)} style={{ flex: 1, background: C.moss, color: "#fff",
+            border: "none", borderRadius: 8, padding: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {pasteOpen ? "Close" : "Paste backup"}
+          </button>
+        </div>
+
+        {pasteOpen && (
+          <div style={{ marginTop: 10 }}>
+            <textarea value={pasteText} onChange={e => setPasteText(e.target.value)}
+              placeholder="Paste backup text here…"
+              style={{ width: "100%", height: 130, fontFamily: "monospace", fontSize: 12, padding: 9,
+                border: `1px solid ${C.line}`, borderRadius: 8, boxSizing: "border-box", resize: "vertical" }} />
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button onClick={() => loadPasted("merge")} disabled={!pasteText.trim()}
+                style={{ flex: 1, background: pasteText.trim() ? C.moss : "#ccc", color: "#fff", border: "none",
+                  borderRadius: 8, padding: 11, fontWeight: 700, cursor: pasteText.trim() ? "pointer" : "default", fontFamily: "inherit" }}>
+                Merge in
+              </button>
+              <button onClick={() => loadPasted("replace")} disabled={!pasteText.trim()}
+                style={{ flex: 1, background: "#fff", color: C.alert, border: `1px solid ${C.alert}`,
+                  borderRadius: 8, padding: 11, fontWeight: 700, cursor: pasteText.trim() ? "pointer" : "default", fontFamily: "inherit" }}>
+                Replace all
+              </button>
+            </div>
+            <div style={{ fontSize: 11.5, color: C.stone, marginTop: 6 }}>
+              <b>Merge</b> keeps what's here and adds anything new — safe to run twice.
+              <b> Replace</b> wipes this device's data first.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
