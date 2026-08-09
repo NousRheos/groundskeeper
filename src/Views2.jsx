@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fmtMoney, uid, priceQuote, marginCheck, DAYS } from "./core.js";
-import { ClientEditSheet, MessageSheet } from "./Views4.jsx";
+import { ClientEditSheet, MessageSheet, ClientDetailSheet, VisitEditSheet } from "./Views4.jsx";
 
 const C = { ink: "#0f1f13", forest: "#1B3A1F", moss: "#3f7a33", field: "#79bd56",
   paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e",
@@ -10,10 +10,15 @@ const inputStyle = { width: "100%", padding: "11px 12px", fontSize: 15, border: 
   borderRadius: 8, fontFamily: "inherit", boxSizing: "border-box" };
 
 // ─── CLIENTS ────────────────────────────────────────────────────────────
+const BLANK_CLIENT = () => ({ id: uid(), status: "active", name: "", address: "", phone: "",
+  rate: "", zone: "", frequency: "weekly", weekParity: 0, scheduleDays: [], notes: "" });
+
 export function ClientsView({ data, upd, showToast }) {
-  const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState(null);   // client being edited
+  const [adding, setAdding] = useState(null);       // blank client for the new-client sheet
+  const [editing, setEditing] = useState(null);     // client being edited
+  const [detail, setDetail] = useState(null);       // client detail view
   const [messaging, setMessaging] = useState(null); // client being texted
+  const [editVisit, setEditVisit] = useState(null); // visit opened from detail
   const [form, setForm] = useState({ name: "", address: "", phone: "", rate: "", zone: "", scheduleDays: [] });
 
   const addClient = () => {
@@ -33,36 +38,11 @@ export function ClientsView({ data, upd, showToast }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div style={{ fontFamily: "Georgia,serif", fontSize: 20, fontWeight: 700 }}>Clients</div>
-        <button onClick={() => setAdding(a => !a)} style={{ background: C.forest, color: "#fff", border: "none",
-          borderRadius: 8, padding: "8px 14px", fontWeight: 700, cursor: "pointer" }}>{adding ? "Cancel" : "+ Add"}</button>
+        <button onClick={() => setAdding(BLANK_CLIENT())} style={{ background: C.forest, color: "#fff", border: "none",
+          borderRadius: 8, padding: "8px 14px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Add</button>
       </div>
 
-      {adding && (
-        <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <input style={inputStyle} placeholder="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <div style={{ height: 8 }} />
-          <input style={inputStyle} placeholder="Address" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
-          <div style={{ height: 8 }} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <input style={inputStyle} placeholder="Rate $" type="number" value={form.rate} onChange={e => setForm({ ...form, rate: e.target.value })} />
-            <input style={inputStyle} placeholder="Zone (e.g. Elm St)" value={form.zone} onChange={e => setForm({ ...form, zone: e.target.value })} />
-          </div>
-          <div style={{ height: 8 }} />
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {DAYS.map((d, i) => (
-              <button key={d} onClick={() => toggleDay(i)} style={{
-                padding: "7px 11px", borderRadius: 16, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                border: `1px solid ${form.scheduleDays.includes(i) ? C.forest : C.line}`,
-                background: form.scheduleDays.includes(i) ? C.forest : "#fff",
-                color: form.scheduleDays.includes(i) ? "#fff" : C.stone }}>{d}</button>
-            ))}
-          </div>
-          <button onClick={addClient} style={{ marginTop: 12, width: "100%", background: C.forest, color: "#fff",
-            border: "none", borderRadius: 8, padding: 11, fontWeight: 700, cursor: "pointer" }}>Save Client</button>
-        </div>
-      )}
-
-      {data.clients.length === 0 && !adding && (
+      {data.clients.length === 0 && (
         <div style={{ padding: 30, textAlign: "center", color: C.stone, background: "#fff", borderRadius: 12, border: `1px dashed ${C.line}` }}>
           No clients yet.
         </div>
@@ -72,7 +52,7 @@ export function ClientsView({ data, upd, showToast }) {
         const totalEarned = data.visits.filter(v => v.clientId === c.id && v.paid).reduce((s, v) => s + Number(v.amount || 0), 0);
         return (
           <div key={c.id} style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 13, marginBottom: 8 }}>
-            <div onClick={() => setEditing(c)} style={{ cursor: "pointer" }}>
+            <div onClick={() => setDetail(c)} style={{ cursor: "pointer" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <div style={{ fontWeight: 700 }}>{c.name}</div>
                 <div style={{ fontWeight: 700, color: C.forest }}>{fmtMoney(c.rate)}/visit</div>
@@ -83,9 +63,9 @@ export function ClientsView({ data, upd, showToast }) {
               </div>
             </div>
             <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
-              <button onClick={() => setEditing(c)} style={{ flex: 1, background: "#fff", color: C.forest,
+              <button onClick={() => setDetail(c)} style={{ flex: 1, background: "#fff", color: C.forest,
                 border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12.5,
-                cursor: "pointer", fontFamily: "inherit" }}>Edit</button>
+                cursor: "pointer", fontFamily: "inherit" }}>Details</button>
               <button onClick={() => setMessaging(c)} style={{ flex: 1, background: C.moss, color: "#fff",
                 border: "none", borderRadius: 8, padding: "8px 0", fontWeight: 700, fontSize: 12.5,
                 cursor: "pointer", fontFamily: "inherit" }}>Text</button>
@@ -97,7 +77,16 @@ export function ClientsView({ data, upd, showToast }) {
         );
       })}
 
+      {adding && <ClientEditSheet client={adding} isNew upd={upd} showToast={showToast} onClose={() => setAdding(null)} />}
       {editing && <ClientEditSheet client={editing} upd={upd} showToast={showToast} onClose={() => setEditing(null)} />}
+      {detail && <ClientDetailSheet client={data.clients.find(c => c.id === detail.id) || detail} data={data}
+        onClose={() => setDetail(null)}
+        onEdit={() => { const c = detail; setDetail(null); setEditing(c); }}
+        onText={() => { const c = detail; setDetail(null); setMessaging(c); }}
+        onEditVisit={v => { setDetail(null); setEditVisit(v); }} />}
+      {editVisit && <VisitEditSheet visit={editVisit}
+        clientName={data.clients.find(c => c.id === editVisit.clientId)?.name || ""}
+        upd={upd} showToast={showToast} onClose={() => setEditVisit(null)} />}
       {messaging && <MessageSheet client={messaging}
         visit={data.visits.filter(v => v.clientId === messaging.id).sort((a,b) => (b.date||"").localeCompare(a.date||""))[0] || null}
         business={data.business} showToast={showToast} onClose={() => setMessaging(null)} />}
@@ -140,11 +129,13 @@ export function QuoteView({ data, upd, showToast }) {
       if (d.clients.some(c => c.name.toLowerCase() === trimmed.toLowerCase() && c.rate === est.price)) {
         return d; // already created by the first tap
       }
+      // Quotes were being written to an array nothing ever read. The accepted
+      // quote's real output is the client record and its rate — that's what
+      // gets stored; lotSqFt is kept so the estimate can be recreated.
       return {
         ...d,
         clients: [{ id: clientId, status: "active", name: trimmed, address, phone: "", rate: est.price,
-          zone: "", scheduleDays: [], lotSqFt }, ...d.clients],
-        quotes: [{ id: uid(), name: trimmed, address, lotSqFt, obstacles, estimate: est, status: "accepted", createdDate: new Date().toISOString().slice(0,10) }, ...d.quotes],
+          zone: "", scheduleDays: [], lotSqFt, notes: "" }, ...d.clients],
       };
     });
     setName(""); setAddress("");
