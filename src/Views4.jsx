@@ -29,7 +29,7 @@ export function Sheet({ title, onClose, children, footer }) {
 }
 
 // ─── CLIENT EDIT ─────────────────────────────────────────────────────────
-export function ClientEditSheet({ client, upd, showToast, onClose }) {
+export function ClientEditSheet({ client, upd, showToast, onClose, isNew }) {
   const [f, setF] = useState({ ...client });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
@@ -38,10 +38,18 @@ export function ClientEditSheet({ client, upd, showToast, onClose }) {
       ? p.scheduleDays.filter(x => x !== i) : [...(p.scheduleDays || []), i] }));
 
   const save = () => {
-    if (!String(f.name || "").trim()) { showToast("Name required", "err"); return; }
-    upd(d => ({ ...d, clients: d.clients.map(c => c.id === client.id
-      ? { ...f, name: String(f.name).trim(), rate: Number(f.rate) || 0 } : c) }));
-    showToast("Client updated"); onClose();
+    const nm = String(f.name || "").trim();
+    if (!nm) { showToast("Name required", "err"); return; }
+    const rec = { ...f, name: nm, rate: Number(f.rate) || 0 };
+    upd(d => {
+      if (isNew) {
+        // Dedupe guard so a double-tap can't create the same client twice.
+        if (d.clients.some(c => c.name.toLowerCase() === nm.toLowerCase())) return d;
+        return { ...d, clients: [rec, ...d.clients] };
+      }
+      return { ...d, clients: d.clients.map(c => c.id === client.id ? rec : c) };
+    });
+    showToast(isNew ? "Client added" : "Client updated"); onClose();
   };
 
   const remove = () => {
@@ -53,15 +61,15 @@ export function ClientEditSheet({ client, upd, showToast, onClose }) {
   };
 
   return (
-    <Sheet title="Edit client" onClose={onClose} footer={
+    <Sheet title={isNew ? "New client" : "Edit client"} onClose={onClose} footer={
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={save} style={{ flex: 2, background: C.forest, color: "#fff", border: "none",
           borderRadius: 10, padding: 13, fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
-        <button onClick={() => { if (confirmDelete) remove(); else setConfirmDelete(true); }}
+        {!isNew && <button onClick={() => { if (confirmDelete) remove(); else setConfirmDelete(true); }}
           style={{ flex: 1, background: confirmDelete ? C.alert : "#fff", color: confirmDelete ? "#fff" : C.alert,
             border: `1px solid ${C.alert}`, borderRadius: 10, padding: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {confirmDelete ? "Confirm?" : "Delete"}
-        </button>
+        </button>}
       </div>}>
       <input style={inputStyle} placeholder="Name" value={f.name || ""} onChange={e => set("name", e.target.value)} />
       <div style={{ height: 8 }} />
@@ -180,6 +188,143 @@ export function VisitEditSheet({ visit, clientName, upd, showToast, onClose }) {
           </div>
         )}
       </div>
+    </Sheet>
+  );
+}
+
+
+// ─── CLIENT DETAIL — what you want in hand when a client calls ───────────
+export function ClientDetailSheet({ client, data, onClose, onEdit, onText, onEditVisit }) {
+  const visits = data.visits.filter(v => v.clientId === client.id)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const paid = visits.filter(v => v.paid).reduce((s, v) => s + Number(v.amount || 0), 0);
+  const owed = visits.filter(v => !v.paid).reduce((s, v) => s + Number(v.amount || 0), 0);
+  const timed = visits.filter(v => Number(v.durationMin) > 0);
+  const avgMin = timed.length ? Math.round(timed.reduce((s, v) => s + Number(v.durationMin), 0) / timed.length) : null;
+  const digits = String(client.phone || "").replace(/\D/g, "");
+
+  const stat = (label, value, color) => (
+    <div style={{ flex: 1 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: C.stone }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: color || C.ink }}>{value}</div>
+    </div>
+  );
+
+  return (
+    <Sheet title={client.name} onClose={onClose} footer={
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={onEdit} style={{ flex: 1, background: "#fff", color: C.forest, border: `1px solid ${C.line}`,
+          borderRadius: 10, padding: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Edit</button>
+        <button onClick={onText} style={{ flex: 1, background: C.moss, color: "#fff", border: "none",
+          borderRadius: 10, padding: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Text</button>
+        {digits && <a href={`tel:${digits}`} style={{ flex: 1, textAlign: "center", background: C.forest, color: "#fff",
+          borderRadius: 10, padding: 13, fontWeight: 700, textDecoration: "none", fontFamily: "inherit" }}>Call</a>}
+      </div>}>
+
+      <div style={{ fontSize: 13.5, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>
+        {client.address || "No address on file"}
+        {client.phone ? <><br />{client.phone}</> : null}
+        {client.zone ? <><br /><span style={{ color: C.moss, fontWeight: 700 }}>{client.zone}</span></> : null}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, background: "#fff", border: `1px solid ${C.line}`,
+        borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        {stat("Rate", fmtMoney(client.rate))}
+        {stat("Collected", fmtMoney(paid), C.forest)}
+        {stat("Owed", fmtMoney(owed), owed > 0 ? C.alert : C.ink)}
+      </div>
+
+      {(avgMin || client.notes) && (
+        <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          {avgMin && <div style={{ fontSize: 13 }}>
+            Averages <b>{avgMin} min</b> on site across {timed.length} timed visit{timed.length > 1 ? "s" : ""}
+            {client.rate > 0 && avgMin > 0 && <> — about <b>{fmtMoney(client.rate / (avgMin / 60))}/hr</b></>}
+          </div>}
+          {client.notes && <div style={{ fontSize: 13, color: C.stone, marginTop: avgMin ? 8 : 0, whiteSpace: "pre-wrap" }}>{client.notes}</div>}
+        </div>
+      )}
+
+      <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase",
+        color: C.stone, margin: "4px 0 6px" }}>
+        Service history — {visits.length} visit{visits.length !== 1 ? "s" : ""}
+      </div>
+      {visits.length === 0 && <div style={{ fontSize: 13, color: C.stone, fontStyle: "italic" }}>No visits logged yet.</div>}
+      {visits.map(v => (
+        <div key={v.id} onClick={() => onEditVisit(v)} style={{ background: "#fff", border: `1px solid ${C.line}`,
+          borderRadius: 10, padding: "10px 12px", marginBottom: 5, display: "flex", alignItems: "center",
+          gap: 10, cursor: "pointer" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{fmtDate(v.date)}
+              {v.durationMin ? <span style={{ color: C.stone, fontWeight: 400 }}> · {v.durationMin} min</span> : null}
+            </div>
+            <div style={{ fontSize: 12, color: C.stone }}>{(v.servicesDone || []).join(", ") || "Service"}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>{fmtMoney(v.amount)}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: v.paid ? C.moss : C.alert }}>
+              {v.paid ? "PAID" : "UNPAID"}
+            </div>
+          </div>
+        </div>
+      ))}
+    </Sheet>
+  );
+}
+
+// ─── LOG A PAST SERVICE (#5) ─────────────────────────────────────────────
+export function AddServiceSheet({ data, upd, showToast, onClose, presetClientId }) {
+  const [clientId, setClientId] = useState(presetClientId || (data.clients[0]?.id || ""));
+  const [date, setDate] = useState(todayStr());
+  const [amount, setAmount] = useState("");
+  const [paid, setPaid] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const client = data.clients.find(c => c.id === clientId);
+
+  useEffect(() => { if (client && amount === "") setAmount(String(client.rate || "")); }, [clientId]);
+
+  const save = () => {
+    if (!clientId) { showToast("Pick a client", "err"); return; }
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt < 0) { showToast("Enter a valid amount", "err"); return; }
+    if (saving) return;
+    setSaving(true);
+    upd(d => {
+      if (d.visits.some(v => v.clientId === clientId && v.date === date)) return d;
+      return { ...d, visits: [{ id: uid(), clientId, date, amount: amt,
+        paid, paidDate: paid ? date : null, durationMin: null,
+        servicesDone: ["Mow", "Trim", "Blow"] }, ...d.visits] };
+    });
+    showToast("Service logged"); onClose();
+  };
+
+  return (
+    <Sheet title="Log a service" onClose={onClose} footer={
+      <button onClick={save} style={{ width: "100%", background: C.forest, color: "#fff", border: "none",
+        borderRadius: 10, padding: 13, fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Save</button>}>
+      <div style={{ fontSize: 12, color: C.stone, marginBottom: 10 }}>
+        For work you forgot to log, or did on an earlier day.
+      </div>
+      <div style={{ fontSize: 11.5, fontWeight: 800, color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Client</div>
+      <select value={clientId} onChange={e => setClientId(e.target.value)} style={inputStyle}>
+        {data.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <div style={{ height: 10 }} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Date</div>
+          <input type="date" value={date} max={todayStr()} onChange={e => setDate(e.target.value)} style={inputStyle} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Amount</div>
+          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ height: 12 }} />
+      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: "#fff",
+        border: `1px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
+        <input type="checkbox" checked={paid} onChange={e => setPaid(e.target.checked)} style={{ width: 20, height: 20 }} />
+        <span style={{ fontWeight: 700, fontSize: 14.5 }}>Already paid on this date</span>
+      </label>
     </Sheet>
   );
 }
