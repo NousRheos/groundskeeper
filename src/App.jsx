@@ -3,7 +3,7 @@ import { db, migrate, blankState, todayStr, isoOf, mondayOf, weekDates, dowOf,
   fmtShort, fmtMoney, DAYS, DAYS_FULL, uid, priceQuote, marginCheck } from "./core.js";
 import { TodayView, WeekView } from "./Views1.jsx";
 import { ClientsView, QuoteView } from "./Views2.jsx";
-import { TaxView, EquipmentView, SettingsView } from "./Views3.jsx";
+import { TaxView, SettingsView } from "./Views3.jsx";
 
 // ─── ICONS (inline SVG, zero dependencies) ─────────────────────────────────
 const Ic = ({ n, s = 18, c = "currentColor" }) => {
@@ -90,8 +90,8 @@ export default function App() {
 
       <nav style={{ display: "flex", background: "#fff", borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
         {[["today", "Today", "home"], ["week", "Week", "calendar"], ["clients", "Clients", "users"],
-          ["quote", "Quote", "dollar"], ["tax", "Tax", "file"], ["equipment", "Equipment", "wrench"],
-          ["settings", "Setup", "map"]].map(([id, lbl, icon]) => (
+          ["quote", "Quote", "dollar"], ["tax", "Tax", "file"],
+          ["settings", "Setup", "wrench"]].map(([id, lbl, icon]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             flex: "1 0 auto", padding: "12px 10px", background: "none", border: "none",
             borderBottom: tab === id ? `3px solid ${C.field}` : "3px solid transparent",
@@ -108,7 +108,6 @@ export default function App() {
         {tab === "clients" && <ClientsView data={data} upd={upd} showToast={showToast} />}
         {tab === "quote" && <QuoteView data={data} upd={upd} showToast={showToast} />}
         {tab === "tax" && <TaxView data={data} upd={upd} showToast={showToast} />}
-        {tab === "equipment" && <EquipmentView data={data} upd={upd} showToast={showToast} />}
         {tab === "settings" && <SettingsView data={data} upd={upd} showToast={showToast} />}
       </main>
 
