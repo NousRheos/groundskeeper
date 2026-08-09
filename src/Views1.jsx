@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { todayStr, isoOf, mondayOf, weekDates, dowOf, fmtShort, fmtMoney, DAYS, DAYS_FULL, uid } from "./core.js";
-import { VisitEditSheet, MessageSheet } from "./Views4.jsx";
+import { VisitEditSheet, MessageSheet, AddServiceSheet } from "./Views4.jsx";
 
 const C = { ink: "#0f1f13", forest: "#1B3A1F", moss: "#3f7a33", field: "#79bd56",
   paper: "#f7f3ed", card: "#ffffff", line: "#e2ddd2", stone: "#5c6a5e", alert: "#b3402e" };
@@ -11,6 +11,7 @@ export function TodayView({ data, upd, showToast }) {
   const [msgTarget, setMsgTarget] = useState(null); // {client, visit}
   // Job timer: {clientId, startedAt}. Kept in component state deliberately —
   // a half-finished timer is not business data and shouldn't outlive the app.
+  const [addService, setAddService] = useState(false);
   const [timer, setTimer] = useState(null);
   const [tick, setTick] = useState(0);
   // Only run an interval while something is actually being timed. An
@@ -29,10 +30,31 @@ export function TodayView({ data, upd, showToast }) {
   };
   const todayDow = new Date().getDay();
   const activeClients = data.clients.filter(c => c.status !== "inactive");
-  // A client with no fixed schedule day is "floating" — shows every day so
-  // it's never invisible just because a day was never assigned.
-  const todayClients = activeClients.filter(c =>
-    (c.scheduleDays || []).length === 0 || (c.scheduleDays || []).includes(todayDow));
+  // Today is driven by the WEEK PLAN, not by guessing from scheduleDays. The
+  // old rule showed every dayless client on every single day, which made
+  // "today's list" meaningless once most clients had no day set.
+  const todayStops = (data.plannedStops || []).filter(s => s.date === todayStr());
+  const todayClients = todayStops
+    .map(s => activeClients.find(c => c.id === s.clientId))
+    .filter(Boolean);
+
+  // If today was never planned, offer one tap to plan it rather than showing
+  // an empty screen with no way forward.
+  const planToday = () => {
+    upd(d => {
+      const have = new Set((d.plannedStops || []).filter(s => s.date === todayStr()).map(s => s.clientId));
+      const add = d.clients.filter(c => c.status !== "inactive")
+        .filter(c => {
+          const days = c.scheduleDays || [];
+          return days.length ? days.includes(todayDow) : true;
+        })
+        .filter(c => !have.has(c.id))
+        .map((c, i) => ({ id: uid(), clientId: c.id, date: todayStr(), order: i, done: false }));
+      if (!add.length) { showToast("Nothing to add for today", "err"); return d; }
+      showToast(`${add.length} stop${add.length > 1 ? "s" : ""} planned for today`);
+      return { ...d, plannedStops: [...(d.plannedStops || []), ...add] };
+    });
+  };
 
   const markDone = (clientId, amount, durationMin = null) => {
     upd(d => {
@@ -79,13 +101,30 @@ export function TodayView({ data, upd, showToast }) {
         </div>
       </div>
 
-      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.stone, margin: "4px 0 8px" }}>
-        {DAYS_FULL[todayDow]} — {todayClients.length} stop{todayClients.length !== 1 ? "s" : ""}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 8px" }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: C.stone }}>
+          {DAYS_FULL[todayDow]} — {todayClients.length} stop{todayClients.length !== 1 ? "s" : ""}
+        </span>
+        <div style={{ flex: 1 }} />
+        {data.clients.length > 0 && <button onClick={() => setAddService(true)}
+          style={{ fontSize: 11.5, fontWeight: 800, color: C.forest, background: "#fff",
+            border: `1px solid ${C.line}`, borderRadius: 14, padding: "5px 11px", cursor: "pointer", fontFamily: "inherit" }}>
+          + Log a service
+        </button>}
       </div>
 
       {todayClients.length === 0 && (
-        <div style={{ padding: 30, textAlign: "center", color: C.stone, background: "#fff", borderRadius: 12, border: `1px dashed ${C.line}` }}>
-          No clients yet. Add one from the Clients tab, or accept a Quote to auto-create one.
+        <div style={{ padding: 24, textAlign: "center", color: C.stone, background: "#fff", borderRadius: 12, border: `1px dashed ${C.line}` }}>
+          {activeClients.length === 0
+            ? "No clients yet. Add one from the Clients tab, or accept a Quote to create one."
+            : <>
+                <div style={{ marginBottom: 12 }}>Nothing planned for today.</div>
+                <button onClick={planToday} style={{ background: C.forest, color: "#fff", border: "none",
+                  borderRadius: 10, padding: "11px 18px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+                  Plan today
+                </button>
+                <div style={{ fontSize: 12, marginTop: 10 }}>Or build the whole week from the Week tab.</div>
+              </>}
         </div>
       )}
 
@@ -158,6 +197,7 @@ export function TodayView({ data, upd, showToast }) {
         </div>
       )}
 
+      {addService && <AddServiceSheet data={data} upd={upd} showToast={showToast} onClose={() => setAddService(false)} />}
       {editVisit && <VisitEditSheet visit={editVisit} clientName={nameOf(editVisit.clientId)}
         upd={upd} showToast={showToast} onClose={() => setEditVisit(null)} />}
       {msgTarget && <MessageSheet client={msgTarget.client} visit={msgTarget.visit}
@@ -217,7 +257,10 @@ export function WeekView({ data, upd, showToast }) {
     });
   };
 
-  const toggleDone = id => upd(d => ({ ...d, plannedStops: d.plannedStops.map(s => s.id === id ? { ...s, done: !s.done } : s) }));
+  // A planned stop is "done" only when a real visit exists for that client and
+  // date. The old checkbox set a flag that logged no work and no income —
+  // two identical-looking buttons where one silently lost money.
+  const isStopDone = s => data.visits.some(v => v.clientId === s.clientId && v.date === s.date);
 
   // Reorder within a day. Stops carry an explicit `order`; zone is only the
   // tiebreaker, so once the operator sets an order it sticks and isn't
@@ -238,7 +281,7 @@ export function WeekView({ data, upd, showToast }) {
   // Google Maps multi-stop route: first address is the origin, last is the
   // destination, everything between becomes a waypoint in the given order.
   const mapsUrlFor = date => {
-    const addrs = weekStops.filter(s => s.date === date && !s.done)
+    const addrs = weekStops.filter(s => s.date === date && !isStopDone(s))
       .sort(byOrder(data))
       .map(s => (cById(s.clientId)?.address || "").trim())
       .filter(Boolean);
@@ -257,7 +300,7 @@ export function WeekView({ data, upd, showToast }) {
         <button onClick={() => setWeekOffset(o => o - 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>◂</button>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontWeight: 800, color: C.forest }}>{weekOffset === 0 ? "This week" : weekOffset === 1 ? "Next week" : `${fmtShort(dates[0])}–${fmtShort(dates[6])}`}</div>
-          <div style={{ fontSize: 11, color: C.stone }}>{fmtShort(dates[0])} – {fmtShort(dates[6])} · {weekStops.filter(s => s.done).length}/{weekStops.length} done</div>
+          <div style={{ fontSize: 11, color: C.stone }}>{fmtShort(dates[0])} – {fmtShort(dates[6])} · {weekStops.filter(isStopDone).length}/{weekStops.length} done</div>
         </div>
         <button onClick={() => setWeekOffset(o => o + 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>▸</button>
       </div>
@@ -289,14 +332,17 @@ export function WeekView({ data, upd, showToast }) {
               ? <div style={{ fontSize: 12, color: "#999", fontStyle: "italic", paddingLeft: 4 }}>—</div>
               : dayStops.map(s => {
                   const c = cById(s.clientId); if (!c) return null;
+                  const done = isStopDone(s);
                   return (
                     <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff",
-                      border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 11px", marginBottom: 5, opacity: s.done ? 0.55 : 1 }}>
-                      <button onClick={() => toggleDone(s.id)} style={{ width: 22, height: 22, borderRadius: "50%",
-                        border: `2px solid ${s.done ? C.forest : C.line}`, background: s.done ? C.forest : "#fff",
-                        cursor: "pointer", flexShrink: 0 }} />
+                      border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 11px", marginBottom: 5, opacity: done ? 0.55 : 1 }}>
+                      <span title={done ? "Logged on the Today tab" : "Not logged yet"}
+                        style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                          border: `2px solid ${done ? C.forest : C.line}`, background: done ? C.forest : "#fff",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "#fff", fontSize: 12, fontWeight: 900 }}>{done ? "✓" : ""}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, textDecoration: s.done ? "line-through" : "none" }}>{c.name}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, textDecoration: done ? "line-through" : "none" }}>{c.name}</div>
                         <div style={{ fontSize: 12, color: C.stone }}>
                           {c.zone && <span style={{ color: C.moss, fontWeight: 700 }}>{c.zone} · </span>}{c.address}
                         </div>
