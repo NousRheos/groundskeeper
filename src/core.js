@@ -149,7 +149,14 @@ const weekDates = mon => Array.from({ length: 7 }, (_, i) => {
 });
 const dowOf = iso => new Date(iso + "T12:00:00").getDay();
 const fmtShort = iso => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-const fmtMoney = n => `$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// Negative amounts must read -$1,234.56, not $-1,234.56. A real net loss is
+// normal for a contractor in an equipment-purchase month, so this renders
+// often enough to matter — and the wrong form reads like a display glitch.
+const fmtMoney = n => {
+  const v = Number(n) || 0;
+  const body = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${v < 0 ? "-" : ""}$${body}`;
+};
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const uid = () => Math.random().toString(36).slice(2, 11) + Date.now().toString(36).slice(-4);
