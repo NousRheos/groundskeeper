@@ -1,0 +1,18 @@
+{
+  "name": "gs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.bundle.js",
+  "scripts": {
+    "test": "node tests/run.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jsdom": "^30.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "type": "module"
+}
