@@ -1,0 +1,433 @@
+{
+ "schemaVersion": 1,
+ "business": {
+  "name": "Trouth Lawn Care",
+  "ownerName": "Ethan Trouth",
+  "phone": "337-525-1320",
+  "mileageRate": 0.7,
+  "taxSetAsidePct": 20,
+  "targetHourlyNet": 60
+ },
+ "pricing": {
+  "mowSpeedMph": 4,
+  "passWidthFt": 4.33,
+  "efficiency": 0.75,
+  "trimBaseMin": 3,
+  "trimPerKSqFt": 2,
+  "blowBaseMin": 2,
+  "setupMin": 6,
+  "billableRate": 85,
+  "minCharge": 45,
+  "roundTo": 5
+ },
+ "lastBackup": null,
+ "clients": [
+  {
+   "id": "b62rn5omrnzcgtm",
+   "status": "active",
+   "name": "Rick Fitts",
+   "address": "4610 Angelle Drive",
+   "phone": "3373042464",
+   "rate": 0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": ""
+  },
+  {
+   "id": "wgv4k92mruxgyjy",
+   "status": "active",
+   "name": "L P Guidry",
+   "address": "2409 bon ton dr",
+   "phone": "3375151074",
+   "rate": 160.0,
+   "zone": "carlyss",
+   "frequency": "biweekly",
+   "weekParity": 1,
+   "scheduleDays": [],
+   "notes": "Back lot too. Sidelines marked via white pvc pipe"
+  },
+  {
+   "id": "m9x5xa9mqdqxh0n",
+   "status": "active",
+   "name": "Krissy Boyser",
+   "address": "2403 Evangeline oak drive",
+   "phone": "3376079986",
+   "rate": 120.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": ""
+  },
+  {
+   "id": "igniqvymrzi3l9a",
+   "status": "active",
+   "name": "Angela Megan's Mom",
+   "address": "Starlin",
+   "phone": "(337) 215-1689",
+   "rate": 45.0,
+   "zone": "Ruth st",
+   "frequency": "biweekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": ""
+  },
+  {
+   "id": "coa2wb0mqdrm7c2",
+   "status": "active",
+   "name": "Keith Hardy",
+   "address": "3626 e napoleon st",
+   "phone": "3373046681",
+   "rate": 60.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "Auto body shop"
+  },
+  {
+   "id": "4qf22cwmqdqvl78",
+   "status": "active",
+   "name": "Sheriee",
+   "address": "1303 Pamela street",
+   "phone": "3372875502",
+   "rate": 60.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "Dog shits in backyard along north fence.\nMake sure to edge well."
+  },
+  {
+   "id": "lmfet93mqdr55a3",
+   "status": "active",
+   "name": "Eduardo & Madonna Nuno",
+   "address": "520 Sheila dr",
+   "phone": "3083809548",
+   "rate": 30.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "Backyard use push mower."
+  },
+  {
+   "id": "utcm0hwmr3gg7tc",
+   "status": "active",
+   "name": "Donna Nichols",
+   "address": "1231 Texas street",
+   "phone": "3375404630",
+   "rate": 40.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "Mow, trim, edge, blow front only."
+  },
+  {
+   "id": "9vlq721mqdrcoqv",
+   "status": "active",
+   "name": "Jyothi Yadalum",
+   "address": "3712 cobblestone rd",
+   "phone": "3375154444",
+   "rate": 25.0,
+   "zone": "Lake Charles",
+   "frequency": "biweekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "$25/hr minimum \nPull vines, new oaks, & weeds. \nTrim and spray everything else. \nWasps live in Southside bushes."
+  },
+  {
+   "id": "i9lwcgcmqdrndnh",
+   "status": "active",
+   "name": "Keith Hardy",
+   "address": "101 Arkansas Street",
+   "phone": "3373046681",
+   "rate": 0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": ""
+  },
+  {
+   "id": "v2mi9yemqdrqxcc",
+   "status": "active",
+   "name": "Megan Ogea",
+   "address": "1232 Texas street",
+   "phone": "3372152171",
+   "rate": 40.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "Dog leash anchored near back porch."
+  },
+  {
+   "id": "szzpfnpmqdqzzfw",
+   "status": "active",
+   "name": "Jamison Trouth",
+   "address": "1716 & 1720 E Burton st",
+   "phone": "3376608373",
+   "rate": 100.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "Clean out east of building.\nCustomer area finished first."
+  },
+  {
+   "id": "nof6e4emqdqjakl",
+   "status": "active",
+   "name": "Morgan Richard",
+   "address": "1105 W. Burton",
+   "phone": "3372445413",
+   "rate": 60.0,
+   "zone": "",
+   "frequency": "weekly",
+   "weekParity": 0,
+   "scheduleDays": [],
+   "notes": "48\" max width for backyard entry or 52\" west side neighbor entry."
+  }
+ ],
+ "visits": [
+  {
+   "id": "84f1rc8msj5qhpo",
+   "clientId": "i9lwcgcmqdrndnh",
+   "date": "2026-08-05",
+   "amount": 20.0,
+   "paid": true,
+   "paidDate": "2026-08-07",
+   "durationMin": 20,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Edge",
+    "Blow"
+   ]
+  },
+  {
+   "id": "1awdxl4msj5od0h",
+   "clientId": "v2mi9yemqdrqxcc",
+   "date": "2026-08-06",
+   "amount": 40.0,
+   "paid": true,
+   "paidDate": "2026-08-07",
+   "durationMin": 60,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Edge",
+    "Blow"
+   ]
+  },
+  {
+   "id": "2l51s1omsj5o3ny",
+   "clientId": "utcm0hwmr3gg7tc",
+   "date": "2026-08-05",
+   "amount": 40.0,
+   "paid": true,
+   "paidDate": "2026-08-07",
+   "durationMin": 30,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Edge",
+    "Blow"
+   ]
+  },
+  {
+   "id": "wc2mdxhmsj5nh72",
+   "clientId": "lmfet93mqdr55a3",
+   "date": "2026-08-06",
+   "amount": 40.0,
+   "paid": true,
+   "paidDate": "2026-08-07",
+   "durationMin": 60,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Edge",
+    "Blow"
+   ]
+  },
+  {
+   "id": "tz1d9fimsj5m2qx",
+   "clientId": "nof6e4emqdqjakl",
+   "date": "2026-08-05",
+   "amount": 60.0,
+   "paid": true,
+   "paidDate": "2026-08-07",
+   "durationMin": 60,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Blow"
+   ]
+  },
+  {
+   "id": "3pm9jdgmsj5lrb9",
+   "clientId": "igniqvymrzi3l9a",
+   "date": "2026-08-05",
+   "amount": 50.0,
+   "paid": true,
+   "paidDate": "2026-08-07",
+   "durationMin": 60,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Blow"
+   ]
+  },
+  {
+   "id": "hrdgkyjmrzi5j6e",
+   "clientId": "igniqvymrzi3l9a",
+   "date": "2026-07-23",
+   "amount": 45.0,
+   "paid": true,
+   "paidDate": "2026-07-24",
+   "durationMin": 45,
+   "servicesDone": [
+    "Mow",
+    "Trim",
+    "Edge",
+    "Blow"
+   ]
+  }
+ ],
+ "quotes": [],
+ "expenses": [
+  {
+   "id": "tiq6elbms80fh1n",
+   "date": "2026-07-30",
+   "amount": 100.74,
+   "category": "Maintenance",
+   "vendor": "belts n blades",
+   "notes": "3 oregon blades"
+  },
+  {
+   "id": "bhco6rpms80e7gt",
+   "date": "2026-07-29",
+   "amount": 12.23,
+   "category": "Supplies",
+   "vendor": "belts n blades",
+   "notes": "1 quart hydrostatic fluid"
+  },
+  {
+   "id": "h6fks8qms80daua",
+   "date": "2026-07-26",
+   "amount": 22.45,
+   "category": "Maintenance",
+   "vendor": "advance auto",
+   "notes": "Antifreeze and wheel bearings"
+  },
+  {
+   "id": "yj1b0tgms80aiky",
+   "date": "2026-07-30",
+   "amount": 19.98,
+   "category": "Maintenance",
+   "vendor": "oreillys",
+   "notes": "Trans fluid 2 quarts"
+  },
+  {
+   "id": "f2hc586ms801kks",
+   "date": "2026-07-30",
+   "amount": 27.68,
+   "category": "Maintenance",
+   "vendor": "la power equipment",
+   "notes": ""
+  },
+  {
+   "id": "6cjid0rms7zzjcx",
+   "date": "2026-07-23",
+   "amount": 24.42,
+   "category": "Fuel",
+   "vendor": "the smart stop, Jim Pickens",
+   "notes": ""
+  },
+  {
+   "id": "pu1bfqpms7pf9e0",
+   "date": "2026-07-30",
+   "amount": 7000.0,
+   "category": "Supplies",
+   "vendor": "la power equipment",
+   "notes": "Used toro z master 4000 HD PRO XL mower"
+  },
+  {
+   "id": "c43puzwms7pe1tg",
+   "date": "2026-07-23",
+   "amount": 365.48,
+   "category": "Supplies",
+   "vendor": "la power equipment",
+   "notes": "New Bg86 blower"
+  },
+  {
+   "id": "ots8gjkms7pcujk",
+   "date": "2026-07-30",
+   "amount": 400.0,
+   "category": "Supplies",
+   "vendor": "brames brothers lake Charles",
+   "notes": "New redmax trimmer."
+  },
+  {
+   "id": "fv5q8kwms7p4hfr",
+   "date": "2026-07-30",
+   "amount": 105.52,
+   "category": "Maintenance",
+   "vendor": "belts n blades",
+   "notes": "2 filters, 5 quarts 20/50 castrol hydrostatic fluid"
+  },
+  {
+   "id": "odurdsoms3zvyim",
+   "date": "2026-07-27",
+   "amount": 250.0,
+   "category": "Maintenance",
+   "vendor": "",
+   "notes": "Steering gear + return ps hose"
+  },
+  {
+   "id": "hgdfl8wms3zuogo",
+   "date": "2026-07-27",
+   "amount": 250.0,
+   "category": "Maintenance",
+   "vendor": "mechanic",
+   "notes": "Labor for steering gear, return ps line, rotors, pads, wheel bearings, 2 engine mounts, 1 trans mount."
+  }
+ ],
+ "mileage": [
+  {
+   "id": "e9obvg9msdpa5g8",
+   "date": "2026-08-03",
+   "miles": 40.0,
+   "purpose": "Client Route"
+  },
+  {
+   "id": "e3j3jfzms7p32no",
+   "date": "2026-07-30",
+   "miles": 40.0,
+   "purpose": "Other"
+  },
+  {
+   "id": "5bw7zbkms6l99cz",
+   "date": "2026-07-29",
+   "miles": 10.0,
+   "purpose": "Supply Run"
+  },
+  {
+   "id": "edbqqoums402idn",
+   "date": "2026-07-27",
+   "miles": 60.0,
+   "purpose": "Supply Run"
+  },
+  {
+   "id": "ivi49lnms0ewcjz",
+   "date": "2026-07-24",
+   "miles": 40.0,
+   "purpose": "Client Route"
+  }
+ ],
+ "plannedStops": [],
+ "equipment": []
+}
